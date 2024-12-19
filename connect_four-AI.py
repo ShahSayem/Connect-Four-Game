@@ -7,24 +7,34 @@ ROWS = 6
 COLUMNS = 7
 
 # Symbols for player tokens
-PLAYER_ONE = "X"
-PLAYER_TWO = "O"
-AI_PLAYER = PLAYER_TWO
-HUMAN_PLAYER = PLAYER_ONE
+AI_PLAYER = "O"
+HUMAN_PLAYER = "X"
 
 WINDOW_LENGTH = 4
 EMPTY = " "
+
+# ANSI escape codes for colors
+RESET = "\033[0m"
+RED = "\033[91m"
 
 # Function to create the game board
 def create_board():
     return np.full((ROWS, COLUMNS), EMPTY)
 
 # Function to print the board
-def print_board(board):
+def print_board(board, winning_positions=None):
     print("\n 1 2 3 4 5 6 7")
     print("+-+-+-+-+-+-+-+")
-    for row in board:
-        print("|" + "|".join(row) + "|")
+    for r in range(ROWS):
+        row = ""
+        for c in range(COLUMNS):
+            cell = board[r][c]
+            if winning_positions and (r, c) in winning_positions:
+                row += f"|{RED}{cell}{RESET}"
+            else:
+                row += f"|{cell}"
+        row += "|"
+        print(row)
         print("+-+-+-+-+-+-+-+")
 
 # Function to drop a piece into a column
@@ -35,42 +45,42 @@ def drop_piece(board, col, piece):
             return True
     return False
 
-# Check for win conditions
+# Function to check for win conditions and return winning positions
 def check_winner(board, piece):
     # Check horizontal
     for r in range(ROWS):
         for c in range(COLUMNS - 3):
             if all(board[r][c + i] == piece for i in range(4)):
-                return True
+                return True, [(r, c + i) for i in range(4)]
     
     # Check vertical
     for r in range(ROWS - 3):
         for c in range(COLUMNS):
             if all(board[r + i][c] == piece for i in range(4)):
-                return True
+                return True, [(r + i, c) for i in range(4)]
     
     # Check positively sloped diagonal
     for r in range(ROWS - 3):
         for c in range(COLUMNS - 3):
             if all(board[r + i][c + i] == piece for i in range(4)):
-                return True
+                return True, [(r + i, c + i) for i in range(4)]
     
     # Check negatively sloped diagonal
     for r in range(3, ROWS):
         for c in range(COLUMNS - 3):
             if all(board[r - i][c + i] == piece for i in range(4)):
-                return True
+                return True, [(r - i, c + i) for i in range(4)]
     
-    return False
+    return False, None
 
 # Function to check if the board is full
 def is_draw(board):
     return all(board[0][col] != EMPTY for col in range(COLUMNS))
 
-# Evaluate window for scoring
+# Function to evaluate a window for scoring
 def evaluate_window(window, piece):
     score = 0
-    opp_piece = PLAYER_ONE if piece == PLAYER_TWO else PLAYER_TWO
+    opp_piece = AI_PLAYER if piece == HUMAN_PLAYER else HUMAN_PLAYER
     
     if window.count(piece) == 4:
         score += 100
@@ -84,7 +94,7 @@ def evaluate_window(window, piece):
     
     return score
 
-# Score the position on the board
+# Function to score the position on the board
 def score_position(board, piece):
     score = 0
     
@@ -134,13 +144,13 @@ def get_next_open_row(board, col):
 # Minimax function with Alpha-Beta Pruning
 def minimax(board, depth, alpha, beta, maximizingPlayer):
     valid_locations = [c for c in range(COLUMNS) if is_valid_location(board, c)]
-    is_terminal = check_winner(board, PLAYER_ONE) or check_winner(board, PLAYER_TWO) or is_draw(board)
+    is_terminal, _ = check_winner(board, AI_PLAYER) or check_winner(board, HUMAN_PLAYER) or is_draw(board)
     
     if depth == 0 or is_terminal:
         if is_terminal:
-            if check_winner(board, AI_PLAYER):
+            if check_winner(board, AI_PLAYER)[0]:
                 return (None, 1000000)
-            elif check_winner(board, HUMAN_PLAYER):
+            elif check_winner(board, HUMAN_PLAYER)[0]:
                 return (None, -1000000)
             else:  # Draw
                 return (None, 0)
@@ -190,7 +200,7 @@ def play_game():
     while not game_over:
         # Human player turn
         if turn % 2 == 0:
-            print("\nPlayer 1 (X), it's your turn!")
+            print(f"\nHUMAN_PLAYER ({HUMAN_PLAYER}), it's your turn!")
             try:
                 col = int(input("Enter the column (1-7): ")) - 1
                 if col < 0 or col >= COLUMNS:
@@ -201,9 +211,10 @@ def play_game():
                 continue
             
             if drop_piece(board, col, HUMAN_PLAYER):
-                print_board(board)
-                if check_winner(board, HUMAN_PLAYER):
-                    print("\nCongratulations! Player 1 (X) wins!")
+                won, positions = check_winner(board, HUMAN_PLAYER)
+                print_board(board, positions if won else None)
+                if won:
+                    print(f"\nCongratulations! HUMAN_PLAYER ({HUMAN_PLAYER}) wins!")
                     game_over = True
                 elif is_draw(board):
                     print("\nIt's a draw!")
@@ -214,17 +225,19 @@ def play_game():
         
         # AI player turn
         else:
-            print("\nAI (O) is thinking...")
+            print(f"\nAI ({AI_PLAYER}) is thinking...")
             col, _ = minimax(board, 5, -math.inf, math.inf, True)
             if drop_piece(board, col, AI_PLAYER):
-                print_board(board)
-                if check_winner(board, AI_PLAYER):
-                    print("\nAI (O) wins!")
+                won, positions = check_winner(board, AI_PLAYER)
+                print_board(board, positions if won else None)
+                if won:
+                    print(f"\nAI ({AI_PLAYER}) wins!")
                     game_over = True
                 elif is_draw(board):
                     print("\nIt's a draw!")
                     game_over = True
                 turn += 1
+
 
 if __name__ == "__main__":
     play_game()
