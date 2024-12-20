@@ -85,12 +85,12 @@ def evaluate_window(window, piece):
     if window.count(piece) == 4:
         score += 100
     elif window.count(piece) == 3 and window.count(EMPTY) == 1:
-        score += 5
+        score += 10
     elif window.count(piece) == 2 and window.count(EMPTY) == 2:
-        score += 2
+        score += 5
     
     if window.count(opp_piece) == 3 and window.count(EMPTY) == 1:
-        score -= 4
+        score -= 100
     
     return score
 
@@ -226,7 +226,7 @@ def play_game():
         # AI player turn
         else:
             print(f"\nAI ({AI_PLAYER}) is thinking...")
-            col, _ = minimax(board, 5, -math.inf, math.inf, True)
+            col, _ = minimax(board, 6, -math.inf, math.inf, True)
             if drop_piece(board, col, AI_PLAYER):
                 won, positions = check_winner(board, AI_PLAYER)
                 print_board(board, positions if won else None)
